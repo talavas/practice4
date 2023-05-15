@@ -11,10 +11,11 @@ import java.util.Properties;
 
 public class Config {
     private final Properties properties;
-    private static final String PROPERTIES_FILE_NAME = "app.properties";
+    private String fileName;
 
     private static final Logger logger = LoggerFactory.getLogger(Config.class);
-    public Config() {
+    public Config(String fileName) {
+        this.fileName = fileName;
         properties = new Properties();
 
         loadPropertiesFromClasspath();
@@ -28,16 +29,16 @@ public class Config {
         return properties.getProperty(key);
     }
     private void loadPropertiesFromClasspath() {
-        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(PROPERTIES_FILE_NAME)
+        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream(fileName)
         ) {
             if (inputStream != null) {
-                logger.debug("Load properties from '{}' file.", PROPERTIES_FILE_NAME);
+                logger.debug("Load properties from '{}' file.", fileName);
                 properties.load(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
             }else{
-                throw new IOException(PROPERTIES_FILE_NAME);
+                throw new IOException(fileName);
             }
         } catch (IOException e) {
-            logger.warn("Can't get properties from file {}.", PROPERTIES_FILE_NAME, e);
+            logger.warn("Can't get properties from file {}.", fileName, e);
         }
     }
     private void setDefaultProperties() {

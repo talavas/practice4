@@ -27,11 +27,10 @@ public class DDLScriptExecutor {
             while ((line = reader.readLine()) != null) {
                 scriptBuilder.append(line.trim());
 
-                // Check if the line ends with a semicolon, indicating the end of a statement
                 if (line.trim().endsWith(";")) {
                     String script = scriptBuilder.toString();
                     statement.execute(script);
-                    scriptBuilder.setLength(0); // Reset the StringBuilder for the next statement
+                    scriptBuilder.setLength(0);
                 }
             }
 

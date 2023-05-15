@@ -33,13 +33,13 @@ public class StoreTableGeneratorImpl extends TableGenerator{
         String insertQuery = "INSERT INTO retail.store (store_type_id,location_id) VALUES (?,?)";
         int lastGeneratedId = 0;
         try(PreparedStatement preparedStatement = connection.getConnection().prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS)){
-            for(int i = 1; i <= storeTypeMaxId; i++) {
-                for (int j = 1; j <= locationTypeMaxId; j++) {
-                    preparedStatement.setInt(1, i);
-                    preparedStatement.setInt(2, j);
+
+                for (int i = 1; i <= locationTypeMaxId; i++) {
+                    preparedStatement.setInt(1, random.nextInt(storeTypeMaxId)+1);
+                    preparedStatement.setInt(2, i);
                     preparedStatement.addBatch();
                 }
-            }
+
 
             int[] insertedRows = preparedStatement.executeBatch();
 

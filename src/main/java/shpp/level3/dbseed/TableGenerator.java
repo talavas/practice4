@@ -7,9 +7,9 @@ import shpp.level3.util.DBConnection;
 import java.util.Random;
 
 public abstract class TableGenerator {
-    protected final Logger logger = LoggerFactory.getLogger(TableGenerator.class);
-    protected final Random random = new Random();
-    DBConnection connection;
+    protected static final Logger logger = LoggerFactory.getLogger(TableGenerator.class);
+    protected static final Random random = new Random();
+    protected static DBConnection connection;
 
     public TableGenerator(DBConnection connection){
         this.connection = connection;

@@ -1,6 +1,7 @@
 package shpp.level3.dto;
 
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
 
 import java.io.Serializable;
@@ -14,10 +15,22 @@ public class ProductDTO implements Serializable {
    @Size(min = 5)
    private String name;
 
+    public float getPrice() {
+        return price;
+    }
+
+    public void setPrice(float price) {
+        this.price = price;
+    }
+
+    @NotNull
+    @Positive(message = "Price must be greater than zero")
+    private float price;
+
     public ProductDTO() {
     }
 
-    public void setProductTypeId(long productTypeId) {
+    public void setProductTypeId(int productTypeId) {
         this.productTypeId = productTypeId;
     }
 
@@ -32,4 +45,5 @@ public class ProductDTO implements Serializable {
     public void setName(String name) {
         this.name = name;
     }
+
 }

@@ -47,7 +47,8 @@ public class TableSeeder {
             try (
                     Reader reader = new InputStreamReader(csvFileInputStream);
                     CSVParser csvParser = new CSVParser(reader, csvFormat);
-                    PreparedStatement preparedStatement = connection.getConnection().prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS)
+                    PreparedStatement preparedStatement = connection.getConnection()
+                            .prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS)
             ) {
 
                 logger.debug("Start seeding table {}", tableName);
@@ -62,13 +63,16 @@ public class TableSeeder {
                     }
                     preparedStatement.addBatch();
                 }
+                setRandomForeignKey(0);
 
                 int[] insertedRows = preparedStatement.executeBatch();
                 lastGeneratedId = insertedRows.length;
+
             } catch (IOException e) {
                 logger.error("Can't load file {}", filename, e);
             }
         }
+        //connection.executeStatement(generateCreateIndexSQL(tableName));
 
         return lastGeneratedId;
     }
@@ -102,6 +106,28 @@ public class TableSeeder {
         queryBuilder.append(")");
         logger.debug("Generated insert query string {}", queryBuilder);
         return queryBuilder.toString();
+    }
+
+    private String generateCreateIndexSQL(String tableName){
+        logger.debug("Generate index query");
+        return "CREATE INDEX idx_"+tableName+"_id ON retail."+ tableName + " (id)";
+    }
+
+    public void setForeignKey(String tableName, String fkTableName){
+        StringBuilder sqlQuery = new StringBuilder();
+        //sqlQuery.append("ALTER TABLE retail.").append(fkTableName);
+        //sqlQuery.append(" ADD CONSTRAINT uk_").append(fkTableName).append("_id").append(" UNIQUE (id);");
+
+        sqlQuery.append( "ALTER TABLE retail.").append(tableName);
+        sqlQuery.append(" ADD CONSTRAINT fk_").append(tableName).append("_").append(fkTableName);
+        sqlQuery.append(" FOREIGN KEY (").append(fkTableName).append("_id) REFERENCES retail.").append(fkTableName + " (id);");
+
+        logger.debug("SQL={}", sqlQuery);
+        try (Statement statement = connection.getConnection().createStatement()) {
+            statement.executeUpdate(sqlQuery.toString());
+        } catch (SQLException e) {
+            logger.error("Error occurred while adding foreign key constraint", e);
+        }
     }
 
 }
