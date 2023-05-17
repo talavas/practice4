@@ -92,7 +92,7 @@ public class TableSeeder {
 
     private String generateInsertQuery(String tableName, String[] headerNames) {
         StringBuilder queryBuilder = new StringBuilder("INSERT INTO ");
-        queryBuilder.append("retail.").append(tableName).append(" (");
+        queryBuilder.append(tableName).append(" (");
 
         for (String column : headerNames){
             queryBuilder.append(column).append(",");
@@ -115,10 +115,8 @@ public class TableSeeder {
 
     public void setForeignKey(String tableName, String fkTableName){
         StringBuilder sqlQuery = new StringBuilder();
-        //sqlQuery.append("ALTER TABLE retail.").append(fkTableName);
-        //sqlQuery.append(" ADD CONSTRAINT uk_").append(fkTableName).append("_id").append(" UNIQUE (id);");
 
-        sqlQuery.append( "ALTER TABLE retail.").append(tableName);
+        sqlQuery.append( "ALTER TABLE ").append(tableName);
         sqlQuery.append(" ADD CONSTRAINT fk_").append(tableName).append("_").append(fkTableName);
         sqlQuery.append(" FOREIGN KEY (").append(fkTableName).append("_id) REFERENCES retail.").append(fkTableName + " (id);");
 

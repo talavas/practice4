@@ -30,7 +30,7 @@ public class StoreTableGeneratorImpl extends TableGenerator{
 
     @Override
     public long generateRecords() {
-        String insertQuery = "INSERT INTO retail.store (store_type_id,location_id) VALUES (?,?)";
+        String insertQuery = "INSERT INTO store (store_type_id,location_id) VALUES (?,?)";
         int lastGeneratedId = 0;
         try(PreparedStatement preparedStatement = connection.getConnection().prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS)){
 

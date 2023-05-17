@@ -22,7 +22,6 @@ public class ProductTableGeneratorImpl extends TableGenerator{
 
     private final Validator validator;
     protected static final int BATCH_SIZE = 1000;
-    AtomicInteger counter = new AtomicInteger(0);
 
     StopWatch timer = new StopWatch();
 
@@ -55,7 +54,7 @@ public class ProductTableGeneratorImpl extends TableGenerator{
                         invalidProduct.incrementAndGet();
                     }
 
-                    if(productBatch.size() == BATCH_SIZE ){
+                    if(productBatch.size() % BATCH_SIZE == 0 ){
                         List<ProductDTO> batch = new ArrayList<>(productBatch);
                         executor.submit(() -> insertBatch(batch));
                         productBatch.clear();
@@ -98,7 +97,6 @@ public class ProductTableGeneratorImpl extends TableGenerator{
         logger.debug("Thread {}, receive batch to insert, size={}", Thread.currentThread().getName(), batch.size());
         String sql = "INSERT INTO retail.product (product_type_id, name, price) VALUES (?, ?, ?)";
         try (PreparedStatement preparedStatement = connection.getConnection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-
 
             for (ProductDTO product : batch) {
                 preparedStatement.setLong(1, product.getProductTypeId());

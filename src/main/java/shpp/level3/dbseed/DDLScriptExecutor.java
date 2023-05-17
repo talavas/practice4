@@ -33,7 +33,8 @@ public class DDLScriptExecutor {
                     scriptBuilder.setLength(0);
                 }
             }
-
+            connection.setDataBase();
+            logger.debug("Set database path");
             logger.info("DDL scripts executed successfully.");
 
         } catch (IOException | SQLException e) {

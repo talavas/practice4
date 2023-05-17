@@ -20,12 +20,13 @@ public class Main {
 
         String productType = System.getProperty("type");
         if(productType != null){
+            connection.setDataBase();
             Store store = new Store();
-            Store.setConnection(connection);
+            store.setConnection(connection);
             timer.start();
             Store foundStore = store.findStoreWithMaxInventory(productType);
             if(foundStore != null){
-                logger.info("Знайдено магазин {} з найбільшою кількістю {}шт. товарів категорії {} ", store, store.getMaxQuantity(), productType);
+                logger.info("Знайдено магазин {} з найбільшою кількістю {}шт. товарів категорії {} ", foundStore, foundStore.getMaxQuantity(), productType);
                 logger.info("Час витрачений на пошук = {}мс", timer.getTime(TimeUnit.MILLISECONDS));
             }else{
                 logger.info("Магазин не знайдено.");

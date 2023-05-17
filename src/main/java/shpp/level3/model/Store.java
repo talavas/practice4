@@ -70,37 +70,61 @@ public class Store {
     }
 
     public Store findStoreWithMaxInventory(String productType) throws SQLException {
-        String sqlStm = "SELECT s.id, st.name AS store_type_name, l.street_name, l.street_number, c.name AS city_name, SUM(i.quantity) AS max_quantity " +
-                "FROM retail.store s " +
-                "INNER JOIN retail.store_type st ON s.store_type_id = st.id " +
-                "JOIN retail.location l ON s.location_id = l.id " +
-                "JOIN retail.city c ON l.city_id = c.id " +
-                "INNER JOIN retail.inventory i ON s.id = i.store_id " +
-                "INNER JOIN retail.product p ON i.product_id = p.id " +
-                "WHERE p.product_type_id = ? " +
-                "GROUP BY s.id, st.name, l.street_name, l.street_number, c.name " +
-                "ORDER BY max_quantity DESC " +
+        Store result = null;
+
+        String sqlStm = "SELECT store_id, SUM(quantity) AS max_quantity "+
+                "FROM product_type pt " +
+                "RIGHT OUTER JOIN product p ON pt.id = p.product_type_id  AND product_type_id = ? " +
+                "RIGHT OUTER JOIN inventory i ON p.id = i.product_id "+
+                "GROUP BY store_id " +
+                "ORDER BY SUM(quantity) DESC "+
                 "LIMIT 1";
-        
         int productTypeId = getProductTypeIdByName(productType);
+        logger.debug("product_type_id = {}", productTypeId);
         
         if(productTypeId > 0){
-            try (PreparedStatement storeStatement = connection.prepareStatement(sqlStm)) {
-                storeStatement.setInt(1, productTypeId);
-                try (ResultSet storeResultSet = storeStatement.executeQuery()) {
+            try (PreparedStatement preparedStatement = connection.prepareStatement(sqlStm)) {
+                preparedStatement.setInt(1, productTypeId);
+                try (ResultSet storeResultSet = preparedStatement.executeQuery()) {
                     if (storeResultSet.next()) {
-                        setStoreType(storeResultSet.getString("store_type_name"));
-                        setCityName(storeResultSet.getString("city_name"));
-                        setStreetName(storeResultSet.getString("street_name"));
-                        setStreetNumber(storeResultSet.getString("street_number"));
-                        setMaxQuantity(storeResultSet.getInt("max_quantity"));
-                        return this;
+                        result  = getStoreById(storeResultSet.getInt("store_id"));
+                        if(result != null){
+                            result.setMaxQuantity(storeResultSet.getInt("max_quantity"));
+                        }
                     }else{
                         logger.debug("Can't find store with product type={}", productType);
                         return null;
                     }
                 }
             }
+        }
+        return result;
+    }
+
+    public Store getStoreById(int id){
+        String sqlStm = "SELECT st.name AS store_name, c.name AS city_name, l.street_name, l.street_number " +
+                "FROM store s "+
+                "JOIN store_type st ON s.store_type_id = st.id "+
+                "JOIN location l ON s.location_id = l.id "+
+                "JOIN city c ON l.city_id = c.id " +
+                "WHERE s.id = ?";
+
+        try (PreparedStatement preparedStatement = connection.prepareStatement(sqlStm)){
+            preparedStatement.setInt(1, id);
+            try (ResultSet resultSet = preparedStatement.executeQuery()) {
+                if(resultSet.next()){
+                    logger.debug("Found store with id={}", id);
+                    Store result = new Store();
+                    result.setStoreType(resultSet.getString("store_name"));
+                    result.setCityName(resultSet.getString("city_name"));
+                    result.setStreetName(resultSet.getString("street_name"));
+                    result.setStreetNumber(resultSet.getString("street_number"));
+                    return result;
+                }
+            }
+
+        } catch (SQLException e) {
+            logger.error("SQL issue: ", e);
         }
         return null;
     }
