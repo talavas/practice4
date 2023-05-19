@@ -11,17 +11,18 @@ import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 public class ProductTableGeneratorImpl extends TableGenerator{
     protected static final int MAX_LENGTH = 50;
 
+    AtomicInteger invalidProduct = new AtomicInteger(0);
+    AtomicInteger validProduct = new AtomicInteger(0);
+
+
     private final Validator validator;
-    protected static final int BATCH_SIZE = 1000;
 
     StopWatch timer = new StopWatch();
 
@@ -34,34 +35,35 @@ public class ProductTableGeneratorImpl extends TableGenerator{
     ExecutorService executor;
     public ProductTableGeneratorImpl(DBConnection connection) {
         super(connection);
-        this.executor = Executors.newFixedThreadPool(Integer.parseInt(connection.getConfig().getProperty("threads")));
+
+        this.executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         this.validator = Validation.buildDefaultValidatorFactory().getValidator();
     }
 
     @Override
     public long generateRecords(long count) {
         timer.start();
-        AtomicInteger invalidProduct = new AtomicInteger();
-        AtomicInteger validProduct = new AtomicInteger();
-        List<ProductDTO> productBatch = new ArrayList<>();
+        BlockingQueue<ProductDTO> productDTOs = new LinkedBlockingQueue<>(Runtime.getRuntime().availableProcessors() * batchSize);
         Stream.generate(ProductTableGeneratorImpl::generateProduct)
                 .limit(count)
                 .forEach(product -> {
-                    if(isValidProduct(product)){
-                        productBatch.add(product);
+                    if(isValidProduct(product) &&productDTOs.offer(product)){
                         validProduct.incrementAndGet();
                     }else{
                         invalidProduct.incrementAndGet();
                     }
-
-                    if(productBatch.size() % BATCH_SIZE == 0 ){
-                        List<ProductDTO> batch = new ArrayList<>(productBatch);
-                        executor.submit(() -> insertBatch(batch));
-                        productBatch.clear();
+                    if(productDTOs.size() >= batchSize){
+                        List<ProductDTO> batch = new ArrayList<>();
+                        int countBatch = productDTOs.drainTo(batch, batchSize);
+                        if(countBatch !=0 ){
+                            executor.submit(() -> insertBatch(batch));
+                        }
                     }
                 });
-        if(!productBatch.isEmpty()){
-            executor.submit(() -> insertBatch(productBatch));
+        List<ProductDTO> batch = new ArrayList<>();
+        int countBatch = productDTOs.drainTo(batch, batchSize);
+        if(countBatch !=0 ){
+            executor.submit(() -> insertBatch(batch));
         }
 
         executor.shutdown();
@@ -95,13 +97,13 @@ public class ProductTableGeneratorImpl extends TableGenerator{
 
     private void insertBatch(List<ProductDTO> batch){
         logger.debug("Thread {}, receive batch to insert, size={}", Thread.currentThread().getName(), batch.size());
-        String sql = "INSERT INTO retail.product (product_type_id, name, price) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO product (product_type_id, name, price) VALUES (?, ?, ?)";
         try (PreparedStatement preparedStatement = connection.getConnection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             for (ProductDTO product : batch) {
                 preparedStatement.setLong(1, product.getProductTypeId());
                 preparedStatement.setString(2, product.getName());
-                preparedStatement.setFloat(3, product.getPrice());
+                preparedStatement.setString(3, product.getPrice());
                 preparedStatement.addBatch();
             }
 

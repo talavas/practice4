@@ -8,14 +8,13 @@ import shpp.level3.dto.InventoryDTO;
 import shpp.level3.util.DBConnection;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
@@ -34,40 +33,43 @@ public class InventoryTableGeneratorImpl extends TableGenerator{
     }
 
     private static int productMaxId;
-    protected static final int BATCH_SIZE = 1000;
 
+    AtomicInteger invalidInventory = new AtomicInteger(0);
     StopWatch timer = new StopWatch();
     ExecutorService executor;
 
     public InventoryTableGeneratorImpl(DBConnection connection) {
         super(connection);
-        this.executor = Executors.newFixedThreadPool(Integer.parseInt(connection.getConfig().getProperty("threads")));
+        this.executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         this.validator = Validation.buildDefaultValidatorFactory().getValidator();
     }
 
     @Override
     public long generateRecords(long count) {
         timer.start();
-        AtomicInteger invalidInventory = new AtomicInteger();
-
-        List<InventoryDTO> inventoryBatch = new ArrayList<>();
+        BlockingQueue<InventoryDTO> inventoryDTOs = new LinkedBlockingQueue<>(Runtime.getRuntime().availableProcessors() * batchSize);
         Stream.generate(InventoryTableGeneratorImpl::generateInventory)
                 .limit(count)
                 .forEach(inventory -> {
                     if(isValidInventory(inventory)){
-                        inventoryBatch.add(inventory);
+                        inventoryDTOs.offer(inventory);
                     }else{
                         invalidInventory.incrementAndGet();
                     }
 
-                    if(inventoryBatch.size() == BATCH_SIZE ){
-                        List<InventoryDTO> batch = new ArrayList<>(inventoryBatch);
-                        executor.submit(() -> insertBatch(batch));
-                        inventoryBatch.clear();
+                    if(inventoryDTOs.size() >= batchSize){
+                        List<InventoryDTO> batch = new ArrayList<>();
+                        int countBatch = inventoryDTOs.drainTo(batch, batchSize);
+                        if(countBatch !=0 ){
+                            executor.submit(() -> insertBatch(batch));
+                        }
                     }
+
                 });
-        if(!inventoryBatch.isEmpty()){
-            executor.submit(() -> insertBatch(inventoryBatch));
+        List<InventoryDTO> batch = new ArrayList<>();
+        int countBatch = inventoryDTOs.drainTo(batch, batchSize);
+        if(countBatch !=0 ){
+            executor.submit(() -> insertBatch(batch));
         }
 
         executor.shutdown();
@@ -77,10 +79,10 @@ public class InventoryTableGeneratorImpl extends TableGenerator{
             executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
             logger.info("All batches inserted successfully.");
             logger.debug("Invalid inventory = {}", invalidInventory.get());
-            logger.debug("Insert valid inventory = {}", validInventory.get());
-            long time = timer.getTime(TimeUnit.MILLISECONDS);
-            logger.info("Time execution = {}", time);
-            logger.info("Insert product RPS={}", (validInventory.doubleValue() / time) * 1000);
+            logger.info("Created INSERT statement for table inventory = {}", validInventory.get());
+            logger.debug("Created new rows in table inventory = {}", getInventoryCount());
+            long time = timer.getTime(TimeUnit.MILLISECONDS);logger.info("Time execution = {}", time);
+            logger.info("Create new rows in inventory table RPS={}", ((double) getInventoryCount() / time) * 1000);
             addIndexToTable();
             addForeignKeyToTable("product");
             addForeignKeyToTable("store");
@@ -98,7 +100,7 @@ public class InventoryTableGeneratorImpl extends TableGenerator{
 
     private void insertBatch(List<InventoryDTO> batch){
         logger.debug("Thread {}, receive batch to insert, size={}", Thread.currentThread().getName(), batch.size());
-        String sql = "INSERT INTO retail.inventory (product_id, store_id, quantity)" +
+        String sql = "INSERT INTO inventory (product_id, store_id, quantity)" +
                 " VALUES (?, ?, ?)" +
                 "ON CONFLICT (product_id, store_id) "+
                 "DO UPDATE SET quantity = inventory.quantity + excluded.quantity";
@@ -127,6 +129,19 @@ public class InventoryTableGeneratorImpl extends TableGenerator{
         inventory.setQuantity(random.nextInt(maxQuantity)+1);
 
         return inventory;
+    }
+
+    private long getInventoryCount(){
+        String sqlStm = "SELECT COUNT(*) FROM inventory";
+        try (Statement statement = connection.getConnection().createStatement()) {
+            ResultSet result = statement.executeQuery(sqlStm);
+            if (result.next()) {
+                return result.getLong(1);
+            }
+        } catch (SQLException e) {
+            logger.error("Can't select all rows from inventory", e);
+        }
+        return 0;
     }
 
     private boolean isValidInventory(InventoryDTO inventory) {
