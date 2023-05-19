@@ -21,7 +21,6 @@ public class ProductTableGeneratorImpl extends TableGenerator{
     protected static final int MAX_LENGTH = 50;
 
     private final Validator validator;
-    protected static final int BATCH_SIZE = 1000;
 
     StopWatch timer = new StopWatch();
 
@@ -54,7 +53,7 @@ public class ProductTableGeneratorImpl extends TableGenerator{
                         invalidProduct.incrementAndGet();
                     }
 
-                    if(productBatch.size() % BATCH_SIZE == 0 ){
+                    if(productBatch.size() % batchSize== 0 ){
                         List<ProductDTO> batch = new ArrayList<>(productBatch);
                         executor.submit(() -> insertBatch(batch));
                         productBatch.clear();
@@ -101,7 +100,7 @@ public class ProductTableGeneratorImpl extends TableGenerator{
             for (ProductDTO product : batch) {
                 preparedStatement.setLong(1, product.getProductTypeId());
                 preparedStatement.setString(2, product.getName());
-                preparedStatement.setFloat(3, product.getPrice());
+                preparedStatement.setString(3, product.getPrice());
                 preparedStatement.addBatch();
             }
 

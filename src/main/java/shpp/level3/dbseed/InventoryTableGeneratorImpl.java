@@ -34,7 +34,6 @@ public class InventoryTableGeneratorImpl extends TableGenerator{
     }
 
     private static int productMaxId;
-    protected static final int BATCH_SIZE = 1000;
 
     StopWatch timer = new StopWatch();
     ExecutorService executor;
@@ -60,7 +59,7 @@ public class InventoryTableGeneratorImpl extends TableGenerator{
                         invalidInventory.incrementAndGet();
                     }
 
-                    if(inventoryBatch.size() == BATCH_SIZE ){
+                    if(inventoryBatch.size() % batchSize == 0 ){
                         List<InventoryDTO> batch = new ArrayList<>(inventoryBatch);
                         executor.submit(() -> insertBatch(batch));
                         inventoryBatch.clear();

@@ -38,7 +38,7 @@ CREATE TABLE product (
     id SERIAL UNIQUE,
     product_type_id INT,
     name varchar(100) NOT NULL,
-    price float NOT NULL
+    price varchar(10) NOT NULL
 );
 
 CREATE TABLE inventory (

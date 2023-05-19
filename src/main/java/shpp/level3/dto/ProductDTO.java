@@ -7,7 +7,6 @@ import jakarta.validation.constraints.Size;
 import java.io.Serializable;
 
 public class ProductDTO implements Serializable {
-
     @NotNull
     private long productTypeId;
 
@@ -15,8 +14,8 @@ public class ProductDTO implements Serializable {
    @Size(min = 5)
    private String name;
 
-    public float getPrice() {
-        return price;
+    public String getPrice() {
+        return String.format("%.2f", this.price);
     }
 
     public void setPrice(float price) {
@@ -26,9 +25,6 @@ public class ProductDTO implements Serializable {
     @NotNull
     @Positive(message = "Price must be greater than zero")
     private float price;
-
-    public ProductDTO() {
-    }
 
     public void setProductTypeId(int productTypeId) {
         this.productTypeId = productTypeId;
