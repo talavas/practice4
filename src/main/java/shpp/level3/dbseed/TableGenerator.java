@@ -11,8 +11,19 @@ public abstract class TableGenerator {
     protected static final Random random = new Random();
     protected static DBConnection connection;
 
+    protected int batchSize = 1000;
+
+    protected int availableThreads;
+
     public TableGenerator(DBConnection connection){
+
         this.connection = connection;
+        String batchSize = connection.getConfig().getProperty("batch.size");
+        if(batchSize != null){
+            this.batchSize = Integer.parseInt(batchSize);
+        }
+
+        this.availableThreads = Integer.parseInt(connection.getConfig().getProperty("threads"));
     }
 
     public abstract long generateRecords(long count);

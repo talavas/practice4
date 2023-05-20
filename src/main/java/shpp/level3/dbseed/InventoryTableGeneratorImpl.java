@@ -5,9 +5,11 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.apache.commons.lang3.time.StopWatch;
 import shpp.level3.dto.InventoryDTO;
+import shpp.level3.dto.ProductDTO;
 import shpp.level3.util.DBConnection;
 
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
@@ -21,6 +23,7 @@ import java.util.stream.Stream;
 
 public class InventoryTableGeneratorImpl extends TableGenerator{
     private final Validator validator;
+    private final  Object lock = new Object();
     AtomicInteger validInventory = new AtomicInteger(0);
 
     public static void setStoreMaxId(int storeMaxId) {
@@ -59,15 +62,27 @@ public class InventoryTableGeneratorImpl extends TableGenerator{
                     }else{
                         invalidInventory.incrementAndGet();
                     }
+                    synchronized (lock) {
 
-                    if(inventoryBatch.size() == BATCH_SIZE ){
-                        List<InventoryDTO> batch = new ArrayList<>(inventoryBatch);
-                        executor.submit(() -> insertBatch(batch));
-                        inventoryBatch.clear();
+                        if (inventoryBatch.size() >= batchSize) {
+                            while (availableThreads == 0){
+                                try {
+                                    logger.debug("Inventory stream generator pause");
+                                    lock.wait(); // Пауза генерації, якщо немає вільних потоків
+                                } catch (InterruptedException e) {
+                                    Thread.currentThread().interrupt();
+                                }
+                            }
+                            List<InventoryDTO> batch = new ArrayList<>(inventoryBatch);
+                            inventoryBatch.clear();
+                            submitTask(batch);
+
+                        }
                     }
+
                 });
         if(!inventoryBatch.isEmpty()){
-            executor.submit(() -> insertBatch(inventoryBatch));
+           submitTask(inventoryBatch);
         }
 
         executor.shutdown();
@@ -80,7 +95,8 @@ public class InventoryTableGeneratorImpl extends TableGenerator{
             logger.debug("Insert valid inventory = {}", validInventory.get());
             long time = timer.getTime(TimeUnit.MILLISECONDS);
             logger.info("Time execution = {}", time);
-            logger.info("Insert product RPS={}", (validInventory.doubleValue() / time) * 1000);
+            logger.info("RPS insert statement execution = {}", (validInventory.doubleValue() / time) * 1000);
+            logger.info("RPS new row created in inventory table = {}", ((double) getInventoryCount() / time ) * 1000);
             addIndexToTable();
             addForeignKeyToTable("product");
             addForeignKeyToTable("store");
@@ -94,6 +110,31 @@ public class InventoryTableGeneratorImpl extends TableGenerator{
     @Override
     public long generateRecords() {
         return 0;
+    }
+
+    public long getInventoryCount() {
+        String sql = "SELECT COUNT(*) FROM retail.inventory";
+        try (Statement statement = connection.getConnection().createStatement();
+             ResultSet resultSet = statement.executeQuery(sql)) {
+            if (resultSet.next()) {
+                return resultSet.getLong(1);
+            }
+        } catch (SQLException e) {
+            logger.error("Error occurred while getting inventory count", e);
+        }
+        return 0;
+    }
+
+    private void submitTask(List<InventoryDTO> batch){
+        availableThreads--;
+        executor.submit(() -> {
+            insertBatch(batch);
+            synchronized ((lock)){
+                logger.debug("Unlock inventory stream generator");
+                availableThreads++;
+                lock.notifyAll();
+            }
+        });
     }
 
     private void insertBatch(List<InventoryDTO> batch){

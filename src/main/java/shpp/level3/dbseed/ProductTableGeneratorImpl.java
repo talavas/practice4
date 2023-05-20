@@ -20,6 +20,10 @@ import java.util.stream.Stream;
 public class ProductTableGeneratorImpl extends TableGenerator{
     protected static final int MAX_LENGTH = 50;
 
+    private final  Object lock = new Object();
+    
+
+
     private final Validator validator;
     protected static final int BATCH_SIZE = 1000;
 
@@ -54,14 +58,24 @@ public class ProductTableGeneratorImpl extends TableGenerator{
                         invalidProduct.incrementAndGet();
                     }
 
-                    if(productBatch.size() % BATCH_SIZE == 0 ){
-                        List<ProductDTO> batch = new ArrayList<>(productBatch);
-                        executor.submit(() -> insertBatch(batch));
-                        productBatch.clear();
+                    synchronized (lock) {
+                        if (productBatch.size() >= batchSize) {
+                            while (availableThreads == 0){
+                                try {
+                                    logger.debug("Product stream generator pause");
+                                    lock.wait(); // Пауза генерації, якщо немає вільних потоків
+                                } catch (InterruptedException e) {
+                                    Thread.currentThread().interrupt();
+                                }
+                            }
+                            List<ProductDTO> batch = new ArrayList<>(productBatch);
+                            productBatch.clear();
+                            submitTask(batch);
+                        }
                     }
                 });
         if(!productBatch.isEmpty()){
-            executor.submit(() -> insertBatch(productBatch));
+            submitTask(productBatch);
         }
 
         executor.shutdown();
@@ -93,15 +107,27 @@ public class ProductTableGeneratorImpl extends TableGenerator{
         return 0;
     }
 
+    private void submitTask(List<ProductDTO> batch){
+        availableThreads--;
+        executor.submit(() -> {
+            insertBatch(batch);
+            synchronized ((lock)){
+                logger.debug("Unlock product stream generator");
+                availableThreads++;
+                lock.notifyAll();
+            }
+        });
+    }
+
     private void insertBatch(List<ProductDTO> batch){
         logger.debug("Thread {}, receive batch to insert, size={}", Thread.currentThread().getName(), batch.size());
-        String sql = "INSERT INTO retail.product (product_type_id, name, price) VALUES (?, ?, ?)";
+        String sql = "INSERT INTO product (product_type_id, name, price) VALUES (?, ?, ?)";
         try (PreparedStatement preparedStatement = connection.getConnection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
 
             for (ProductDTO product : batch) {
                 preparedStatement.setLong(1, product.getProductTypeId());
                 preparedStatement.setString(2, product.getName());
-                preparedStatement.setFloat(3, product.getPrice());
+                preparedStatement.setString(3, product.getPrice());
                 preparedStatement.addBatch();
             }
 

@@ -15,8 +15,8 @@ public class ProductDTO implements Serializable {
    @Size(min = 5)
    private String name;
 
-    public float getPrice() {
-        return price;
+    public String getPrice() {
+        return String.format("%.2f", price);
     }
 
     public void setPrice(float price) {
