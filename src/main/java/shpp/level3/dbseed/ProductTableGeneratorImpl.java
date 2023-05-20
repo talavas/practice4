@@ -90,6 +90,7 @@ public class ProductTableGeneratorImpl extends TableGenerator{
             logger.info("Insert product RPS={}", (validProduct.doubleValue() / time) * 1000);
 
             addIndexToTable();
+            addUniqueConstraintToIdColumn();
         } catch (InterruptedException e) {
             logger.error("Error occurred while waiting for the threads to finish.",e);
             Thread.currentThread().interrupt();
@@ -100,6 +101,16 @@ public class ProductTableGeneratorImpl extends TableGenerator{
     private boolean isValidProduct(ProductDTO product) {
         Set<ConstraintViolation<ProductDTO>> violations = validator.validate(product);
         return violations.isEmpty();
+    }
+
+    private void addUniqueConstraintToIdColumn() {
+        try (Statement statement = connection.getConnection().createStatement()) {
+            String alterSql = "ALTER TABLE product ADD CONSTRAINT unique_product_id UNIQUE (id)";
+            statement.executeUpdate(alterSql);
+            logger.info("Unique constraint 'unique_product_id' added to column 'id' in table 'retail.product'");
+        } catch (SQLException e) {
+            logger.error("Error occurred while adding unique constraint to column 'id' in table 'retail.product'", e);
+        }
     }
 
     @Override
@@ -130,7 +141,7 @@ public class ProductTableGeneratorImpl extends TableGenerator{
                 preparedStatement.setString(3, product.getPrice());
                 preparedStatement.addBatch();
             }
-
+            logger.debug("Batch prepared.");
             preparedStatement.executeBatch();
             logger.debug("Thread {} execute insert batch", Thread.currentThread().getName());
         } catch (SQLException e) {

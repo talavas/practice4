@@ -37,8 +37,8 @@ public class DBConnection {
         props.setProperty("useServerPrepStmts", "true");
 
         connection = DriverManager.getConnection(config.getProperty("postgresql.url"), props);
-        connection.setAutoCommit(true);
-        //connection.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
+        //connection.setAutoCommit(false);
+        connection.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
         logger.info("Connected to the database.");
     }
 

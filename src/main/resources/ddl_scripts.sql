@@ -35,14 +35,14 @@ CREATE TABLE store (
 );
 
 CREATE TABLE product (
-    id SERIAL UNIQUE,
+    id SERIAL,
     product_type_id INT,
-    name varchar(100) NOT NULL,
-    price varchar(10) NOT NULL
+    name varchar(100),
+    price varchar(10)
 );
 
 CREATE TABLE inventory (
-    id SERIAL UNIQUE,
+    id SERIAL,
     store_id INT,
     product_id INT,
     quantity INT,

@@ -95,6 +95,7 @@ public class InventoryTableGeneratorImpl extends TableGenerator{
             logger.debug("Insert valid inventory = {}", validInventory.get());
             long time = timer.getTime(TimeUnit.MILLISECONDS);
             logger.info("Time execution = {}", time);
+            logger.info("Created new row={}", getInventoryCount());
             logger.info("RPS insert statement execution = {}", (validInventory.doubleValue() / time) * 1000);
             logger.info("RPS new row created in inventory table = {}", ((double) getInventoryCount() / time ) * 1000);
             addIndexToTable();
