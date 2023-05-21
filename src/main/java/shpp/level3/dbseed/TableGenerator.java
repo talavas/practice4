@@ -16,12 +16,12 @@ public abstract class TableGenerator {
 
     protected AtomicInteger availableThreads;
 
-    public TableGenerator(DBConnection connection){
+    protected TableGenerator(DBConnection connection){
 
         this.connection = connection;
-        String batchSize = connection.getConfig().getProperty("batch.size");
-        if(batchSize != null){
-            this.batchSize = Integer.parseInt(batchSize);
+        String batchSizeStr = connection.getConfig().getProperty("batch.size");
+        if(batchSizeStr != null){
+            this.batchSize = Integer.parseInt(batchSizeStr);
         }
 
         this.availableThreads = new AtomicInteger(Integer.parseInt(connection.getConfig().getProperty("threads")));

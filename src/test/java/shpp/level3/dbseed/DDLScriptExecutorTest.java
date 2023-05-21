@@ -34,7 +34,7 @@ class DDLScriptExecutorTest {
     }
 
     @Test
-    void executeScript_ScriptExecutedSuccessfully() throws IOException, SQLException {
+    void executeScript_ScriptExecutedSuccessfully() throws SQLException {
         String scriptFileName = "test_ddl.sql";
         when(mockConnection.createStatement()).thenReturn(mockStatement);;
 

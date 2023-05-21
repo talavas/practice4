@@ -44,7 +44,7 @@ public class ProductTableGeneratorImpl extends TableGenerator{
         timer.start();
         AtomicInteger invalidProduct = new AtomicInteger();
         AtomicInteger validProduct = new AtomicInteger();
-        List<ProductDTO> productBatch = new ArrayList<>();
+        List<ProductDTO> productBatch = new ArrayList<>(batchSize);
         Stream.generate(ProductTableGeneratorImpl::generateProduct)
                 .limit(count)
                 .forEach(product -> {
@@ -55,7 +55,7 @@ public class ProductTableGeneratorImpl extends TableGenerator{
                         invalidProduct.incrementAndGet();
                     }
 
-                    synchronized (lock) {
+
                         if (productBatch.size() >= batchSize) {
                             while (availableThreads.get() == 0){
                                 try {
@@ -69,7 +69,7 @@ public class ProductTableGeneratorImpl extends TableGenerator{
                             productBatch.clear();
                             submitTask(batch);
                         }
-                    }
+
                 });
         if(!productBatch.isEmpty()){
             submitTask(productBatch);

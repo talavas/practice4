@@ -2,7 +2,6 @@ package shpp.level3.model;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import shpp.level3.dbseed.TableSeeder;
 import shpp.level3.util.DBConnection;
 
 import java.sql.*;
@@ -50,10 +49,6 @@ public class Store {
     }
 
     private int maxQuantity;
-
-
-    public Store() {
-    }
 
     public int getProductTypeIdByName(String name){
         String sqlStm = "SELECT id FROM retail.product_type WHERE name = '" + name + "';";

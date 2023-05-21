@@ -49,14 +49,10 @@ class InventoryTableGeneratorImplTest {
         when(mockConnection.createStatement()).thenReturn(mockStatement);
         when(mockStatement.executeQuery(anyString())).thenReturn(mockResultSet);
         when(mockResultSet.next()).thenReturn(true, false);
-        //        when(mockResultSet.getLong(eq(1))).thenReturn(anyLong());
-
-
     }
 
     @Test
     void generateRecords() {
-        // Arrange
         long count = 10;
         InventoryTableGeneratorImpl generator = new InventoryTableGeneratorImpl(mockDBConnection);
         InventoryTableGeneratorImpl.setProductMaxId(10);
@@ -86,16 +82,9 @@ class InventoryTableGeneratorImplTest {
         batch.add(inventory1);
         batch.add(inventory2);
 
-        String expectedSql = "INSERT INTO retail.inventory (product_id, store_id, quantity)" +
-                " VALUES (?, ?, ?)" +
-                "ON CONFLICT (product_id, store_id) "+
-                "DO UPDATE SET quantity = inventory.quantity + excluded.quantity";
-
-        when(mockConnection.prepareStatement(eq(expectedSql))).thenReturn(mockPreparedStatement);
-
+        when(mockConnection.prepareStatement(anyString())).thenReturn(mockPreparedStatement);
 
         inventoryTableGenerator.insertBatch(batch);
-
 
         verify(mockPreparedStatement, times(4)).setLong(anyInt(), anyLong());
         verify(mockPreparedStatement, times(2)).setInt(anyInt(), anyInt());

@@ -6,6 +6,10 @@ public class RandomGenerator {
     private static final Random random = new Random();
     protected static final int MAX_LENGTH = 50;
 
+    private RandomGenerator(){
+        throw new UnsupportedOperationException();
+    }
+
     public static String generateRandomString() {
         int length  = random.nextInt(MAX_LENGTH);
         return random.ints('a', 'z' + 1)

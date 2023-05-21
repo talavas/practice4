@@ -11,7 +11,7 @@ import java.util.Properties;
 
 public class Config {
     private final Properties properties;
-    private String fileName;
+    private final String fileName;
 
     private static final Logger logger = LoggerFactory.getLogger(Config.class);
     public Config(String fileName) {
@@ -42,7 +42,8 @@ public class Config {
         }
     }
     private void setDefaultProperties() {
-        properties.setProperty("stop.time", "5");
+        properties.setProperty("batch.size", "1000");
+        properties.setProperty("threads", "1");
 
         logger.warn("Set default properties.");
     }
