@@ -5,7 +5,7 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import org.apache.commons.lang3.time.StopWatch;
 import shpp.level3.dto.InventoryDTO;
-import shpp.level3.dto.ProductDTO;
+
 import shpp.level3.util.DBConnection;
 
 import java.sql.PreparedStatement;
@@ -37,7 +37,6 @@ public class InventoryTableGeneratorImpl extends TableGenerator{
     }
 
     private static int productMaxId;
-    protected static final int BATCH_SIZE = 1000;
 
     StopWatch timer = new StopWatch();
     ExecutorService executor;
@@ -59,16 +58,17 @@ public class InventoryTableGeneratorImpl extends TableGenerator{
                 .forEach(inventory -> {
                     if(isValidInventory(inventory)){
                         inventoryBatch.add(inventory);
+                        validInventory.incrementAndGet();
                     }else{
                         invalidInventory.incrementAndGet();
                     }
                     synchronized (lock) {
 
                         if (inventoryBatch.size() >= batchSize) {
-                            while (availableThreads == 0){
+                            while (availableThreads.get() == 0){
                                 try {
                                     logger.debug("Inventory stream generator pause");
-                                    lock.wait(); // Пауза генерації, якщо немає вільних потоків
+                                    lock.wait();
                                 } catch (InterruptedException e) {
                                     Thread.currentThread().interrupt();
                                 }
@@ -76,7 +76,6 @@ public class InventoryTableGeneratorImpl extends TableGenerator{
                             List<InventoryDTO> batch = new ArrayList<>(inventoryBatch);
                             inventoryBatch.clear();
                             submitTask(batch);
-
                         }
                     }
 
@@ -126,25 +125,25 @@ public class InventoryTableGeneratorImpl extends TableGenerator{
         return 0;
     }
 
-    private void submitTask(List<InventoryDTO> batch){
-        availableThreads--;
+    protected void submitTask(List<InventoryDTO> batch){
+        availableThreads.decrementAndGet();
         executor.submit(() -> {
             insertBatch(batch);
             synchronized ((lock)){
                 logger.debug("Unlock inventory stream generator");
-                availableThreads++;
+                availableThreads.incrementAndGet();
                 lock.notifyAll();
             }
         });
     }
 
-    private void insertBatch(List<InventoryDTO> batch){
+    protected void insertBatch(List<InventoryDTO> batch){
         logger.debug("Thread {}, receive batch to insert, size={}", Thread.currentThread().getName(), batch.size());
         String sql = "INSERT INTO retail.inventory (product_id, store_id, quantity)" +
                 " VALUES (?, ?, ?)" +
                 "ON CONFLICT (product_id, store_id) "+
                 "DO UPDATE SET quantity = inventory.quantity + excluded.quantity";
-        try (PreparedStatement preparedStatement = connection.getConnection().prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        try (PreparedStatement preparedStatement = connection.getConnection().prepareStatement(sql)) {
             for (InventoryDTO inventory : batch) {
                 preparedStatement.setLong(1, inventory.getProductId());
                 preparedStatement.setLong(2, inventory.getStoreId());
@@ -152,8 +151,7 @@ public class InventoryTableGeneratorImpl extends TableGenerator{
                 preparedStatement.addBatch();
             }
 
-            int[] count = preparedStatement.executeBatch();
-            validInventory.addAndGet(count.length);
+            preparedStatement.executeBatch();
             logger.debug("Thread {} execute insert batch", Thread.currentThread().getName());
         } catch (SQLException e) {
             logger.error("Error occurred while inserting batch",e);
@@ -171,12 +169,12 @@ public class InventoryTableGeneratorImpl extends TableGenerator{
         return inventory;
     }
 
-    private boolean isValidInventory(InventoryDTO inventory) {
+    protected boolean isValidInventory(InventoryDTO inventory) {
         Set<ConstraintViolation<InventoryDTO>> violations = validator.validate(inventory);
         return violations.isEmpty();
     }
 
-    private void addIndexToTable() {
+    protected void addIndexToTable() {
         String indexSql = "CREATE INDEX idx_inventory_product_store ON retail.inventory (product_id, store_id)";
         try (Statement statement = connection.getConnection().createStatement()) {
             statement.execute(indexSql);
@@ -186,16 +184,16 @@ public class InventoryTableGeneratorImpl extends TableGenerator{
         }
     }
 
-    private void addForeignKeyToTable(String fkTableName){
+    protected void addForeignKeyToTable(String fkTableName){
         StringBuilder sqlQuery = new StringBuilder();
-        sqlQuery.append("ALTER TABLE retail.inventory ADD CONSTRAINT fk_inventory_").append(fkTableName);
+        sqlQuery.append("ALTER TABLE inventory ADD CONSTRAINT fk_inventory_").append(fkTableName);
         sqlQuery.append(" FOREIGN KEY (").append(fkTableName).append("_id)");
-        sqlQuery.append(" REFERENCES retail.").append(fkTableName).append(" (id);");
+        sqlQuery.append(" REFERENCES ").append(fkTableName).append(" (id);");
         logger.debug("SQL={}", sqlQuery);
 
         try (Statement statement = connection.getConnection().createStatement()) {
             statement.execute(sqlQuery.toString());
-            logger.info("FK {} added to retail.inventory table.", fkTableName);
+            logger.info("FK {} added to inventory table.", fkTableName);
         } catch (SQLException e) {
             logger.error("Error occurred while adding index to retail.inventory table", e);
         }

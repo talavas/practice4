@@ -15,18 +15,11 @@ public class DBConnection {
 
     private final Config config;
 
-    public String getDbName() {
-        return dbName;
-    }
-
-    private String dbName;
-
 
     private Connection connection;
 
     public DBConnection(Config config) throws SQLException {
         this.config = config;
-        this.dbName = config.getProperty("db.name");
         connect();
     }
 
@@ -37,8 +30,6 @@ public class DBConnection {
         props.setProperty("useServerPrepStmts", "true");
 
         connection = DriverManager.getConnection(config.getProperty("postgresql.url"), props);
-        //connection.setAutoCommit(false);
-        connection.setTransactionIsolation(Connection.TRANSACTION_READ_COMMITTED);
         logger.info("Connected to the database.");
     }
 

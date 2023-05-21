@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import shpp.level3.util.DBConnection;
 
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public abstract class TableGenerator {
     protected static final Logger logger = LoggerFactory.getLogger(TableGenerator.class);
@@ -13,7 +14,7 @@ public abstract class TableGenerator {
 
     protected int batchSize = 1000;
 
-    protected int availableThreads;
+    protected AtomicInteger availableThreads;
 
     public TableGenerator(DBConnection connection){
 
@@ -23,7 +24,7 @@ public abstract class TableGenerator {
             this.batchSize = Integer.parseInt(batchSize);
         }
 
-        this.availableThreads = Integer.parseInt(connection.getConfig().getProperty("threads"));
+        this.availableThreads = new AtomicInteger(Integer.parseInt(connection.getConfig().getProperty("threads")));
     }
 
     public abstract long generateRecords(long count);

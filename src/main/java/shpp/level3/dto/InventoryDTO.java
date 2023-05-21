@@ -4,6 +4,12 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 public class InventoryDTO {
+    public InventoryDTO(int storeId, int productId, int quantity) {
+        this.storeId = storeId;
+        this.productId = productId;
+        this.quantity = quantity;
+    }
+
     public void setStoreId(int storeId) {
         this.storeId = storeId;
     }
@@ -13,6 +19,7 @@ public class InventoryDTO {
     }
 
     @NotNull
+    @Positive
     private int storeId;
 
     public void setProductId(int productId) {
@@ -24,6 +31,7 @@ public class InventoryDTO {
     }
 
     @NotNull
+    @Positive
     private int productId;
 
     public void setQuantity(int quantity) {
@@ -35,7 +43,7 @@ public class InventoryDTO {
     }
 
     @NotNull
-    @Positive(message = "Inventory quantity should be greater than or equal zero.")
+    @Positive(message = "Inventory quantity should be greater than zero.")
     private int quantity;
 
 

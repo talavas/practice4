@@ -9,11 +9,18 @@ import java.io.Serializable;
 public class ProductDTO implements Serializable {
 
     @NotNull
+    @Positive
     private long productTypeId;
 
     @NotNull
    @Size(min = 5)
    private String name;
+
+    public ProductDTO(long productTypeId, String name, float price) {
+        this.productTypeId = productTypeId;
+        this.name = name;
+        this.price = price;
+    }
 
     public String getPrice() {
         return String.format("%.2f", price);
