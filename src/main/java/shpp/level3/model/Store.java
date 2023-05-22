@@ -68,10 +68,13 @@ public class Store {
         Store result = null;
 
         String sqlStm = "SELECT store_id, SUM(quantity) AS max_quantity "+
-                "FROM product_type pt " +
-                "RIGHT OUTER JOIN product p ON pt.id = p.product_type_id " +
-                "RIGHT OUTER JOIN inventory i ON p.id = i.product_id "+
-                "WHERE p.product_type_id = ? "+
+                "FROM product p " +
+                "JOIN "+
+                    "(SELECT store_id, product_id, quantity "+
+                    "FROM inventory "+
+                    "WHERE product_id IN ( "+
+                        "SELECT id FROM product WHERE product_type_id = ?) "+
+                ") i ON p.id = i.product_id "+
                 "GROUP BY store_id " +
                 "ORDER BY SUM(quantity) DESC "+
                 "LIMIT 1";

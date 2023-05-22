@@ -3,6 +3,7 @@ package shpp.level3.dbseed;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVParser;
 import org.apache.commons.csv.CSVRecord;
+import org.apache.commons.lang3.time.StopWatch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import shpp.level3.util.DBConnection;
@@ -12,11 +13,13 @@ import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.Random;
+import java.util.concurrent.TimeUnit;
 
 public class TableSeeder {
     private final Logger logger = LoggerFactory.getLogger(TableSeeder.class);
 
     private final DBConnection connection;
+    StopWatch timer = new StopWatch();
 
     public void setRandomForeignKey(int randomForeignKey) {
         this.randomForeignKey = randomForeignKey;
@@ -109,6 +112,8 @@ public class TableSeeder {
     }
 
     public void setForeignKey(String tableName, String fkTableName) {
+        timer.reset();
+        timer.start();
         StringBuilder sqlQuery = new StringBuilder();
 
         sqlQuery.append("ALTER TABLE ").append(tableName);
@@ -118,6 +123,7 @@ public class TableSeeder {
         logger.debug("SQL={}", sqlQuery);
         try (Statement statement = connection.getConnection().createStatement()) {
             statement.executeUpdate(sqlQuery.toString());
+            logger.info("Foreign key from {} was added for time ={}ms", fkTableName, timer.getTime(TimeUnit.MILLISECONDS));
         } catch (SQLException e) {
             logger.error("Error occurred while adding foreign key constraint", e);
         }

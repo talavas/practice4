@@ -35,7 +35,7 @@ CREATE TABLE store (
 );
 
 CREATE TABLE product (
-    id SERIAL,
+    id SERIAL UNIQUE,
     product_type_id INT,
     name varchar(100),
     price varchar(10)

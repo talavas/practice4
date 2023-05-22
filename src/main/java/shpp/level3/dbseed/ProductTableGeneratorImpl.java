@@ -20,8 +20,6 @@ import java.util.stream.Stream;
 public class ProductTableGeneratorImpl extends TableGenerator{
     protected static final int MAX_LENGTH = 50;
 
-    private final  Object lock = new Object();
-
     private final Validator validator;
 
     StopWatch timer = new StopWatch();
@@ -54,22 +52,19 @@ public class ProductTableGeneratorImpl extends TableGenerator{
                     }else{
                         invalidProduct.incrementAndGet();
                     }
-
-
-                        if (productBatch.size() >= batchSize) {
-                            while (availableThreads.get() == 0){
-                                try {
+                    if (productBatch.size() >= batchSize) {
+                        while (availableThreads.get() == 0){
+                            try {
                                     logger.debug("Product stream generator pause");
-                                    lock.wait();
+                                    Thread.sleep(100);
                                 } catch (InterruptedException e) {
                                     Thread.currentThread().interrupt();
                                 }
                             }
-                            List<ProductDTO> batch = new ArrayList<>(productBatch);
-                            productBatch.clear();
-                            submitTask(batch);
-                        }
-
+                        List<ProductDTO> batch = new ArrayList<>(productBatch);
+                        productBatch.clear();
+                        submitTask(batch);
+                    }
                 });
         if(!productBatch.isEmpty()){
             submitTask(productBatch);
@@ -87,7 +82,7 @@ public class ProductTableGeneratorImpl extends TableGenerator{
             logger.info("Insert product RPS={}", (validProduct.doubleValue() / time) * 1000);
 
             addIndexToTable();
-            addUniqueConstraintToIdColumn();
+            //addUniqueConstraintToIdColumn();
         } catch (InterruptedException e) {
             logger.error("Error occurred while waiting for the threads to finish.",e);
             Thread.currentThread().interrupt();
@@ -101,10 +96,12 @@ public class ProductTableGeneratorImpl extends TableGenerator{
     }
 
     private void addUniqueConstraintToIdColumn() {
+        timer.reset();
         try (Statement statement = connection.getConnection().createStatement()) {
             String alterSql = "ALTER TABLE product ADD CONSTRAINT unique_product_id UNIQUE (id)";
-            statement.executeUpdate(alterSql);
-            logger.info("Unique constraint 'unique_product_id' added to column 'id' in table 'product'");
+            statement.execute(alterSql);
+            logger.info("Unique constraint 'unique_product_id' added to column 'id' in table 'product' for time = {}",
+                    timer.getTime(TimeUnit.MILLISECONDS));
         } catch (SQLException e) {
             logger.error("Error occurred while adding unique constraint to column 'id' in table 'product'", e);
         }
@@ -117,13 +114,13 @@ public class ProductTableGeneratorImpl extends TableGenerator{
 
     protected void submitTask(List<ProductDTO> batch){
         availableThreads.decrementAndGet();
+
         executor.submit(() -> {
+            logger.debug("Thread {} submit batch to insert", Thread.currentThread().getName());
             insertBatch(batch);
-            synchronized ((lock)){
-                logger.debug("Unlock product stream generator");
-                availableThreads.incrementAndGet();
-                lock.notifyAll();
-            }
+            availableThreads.incrementAndGet();
+            logger.debug("Thread {} insert batch, available threads", Thread.currentThread().getName());
+
         });
     }
 
@@ -165,10 +162,15 @@ public class ProductTableGeneratorImpl extends TableGenerator{
     }
 
     protected void addIndexToTable() {
+        timer.reset();
+        timer.start();
         try (Statement statement = connection.getConnection().createStatement()) {
-            String indexSql = "CREATE INDEX idx_product_id ON retail.product (id)";
-            statement.executeUpdate(indexSql);
-            logger.info("Index 'idx_product_id' added to table 'product'");
+            String indexSql = "CREATE INDEX idx_product_id ON product (id)";
+            statement.execute(indexSql);
+            indexSql = "CREATE INDEX idx_product_type_id ON product (product_type_id)";
+            statement.execute(indexSql);
+            logger.info("Index 'idx_product_id', 'idx_product_type_id added to table 'product' for time = {}ms",
+                    timer.getTime(TimeUnit.MILLISECONDS));
         } catch (SQLException e) {
             logger.error("Error occurred while adding index to table 'product'", e);
         }
