@@ -52,11 +52,16 @@ public class Store {
 
     public int getProductTypeIdByName(String name){
         String sqlStm = "SELECT id FROM retail.product_type WHERE name = '" + name + "';";
+        logger.info("Search id of product type = {}", name);
         try(PreparedStatement typeIdStatement = connection.prepareStatement(sqlStm);
         ResultSet typeIdResultSet = typeIdStatement.executeQuery()){
             if (typeIdResultSet.next()){
+                logger.info("Found result = {}", typeIdResultSet);
                 return typeIdResultSet.getInt("id");
+            }else{
+                logger.info("Id of product type didn't found.");
             }
+
         } catch (SQLException e) {
             logger.error("Can't execute sql statement {}", sqlStm);
         }
