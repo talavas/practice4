@@ -35,7 +35,7 @@ CREATE TABLE store (
 );
 
 CREATE TABLE product (
-    id SERIAL UNIQUE,
+    id SERIAL,
     product_type_id INT,
     name varchar(100),
     price varchar(10)
@@ -45,6 +45,5 @@ CREATE TABLE inventory (
     id SERIAL,
     store_id INT,
     product_id INT,
-    quantity INT,
-    CONSTRAINT unique_product_store UNIQUE (product_id, store_id)
+    quantity INT
 );

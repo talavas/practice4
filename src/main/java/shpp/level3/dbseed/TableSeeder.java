@@ -54,8 +54,9 @@ public class TableSeeder {
                     PreparedStatement preparedStatement = connection.getConnection()
                             .prepareStatement(insertQuery, Statement.RETURN_GENERATED_KEYS)
             ) {
-
-                logger.debug("Start seeding table {}", tableName);
+                timer.reset();
+                timer.start();
+                logger.info("Start seeding table {}", tableName);
 
                 for (CSVRecord csvRecord : csvParser) {
                     for (int i = 1; i <= headers.length; i++) {
@@ -71,6 +72,10 @@ public class TableSeeder {
 
                 int[] insertedRows = preparedStatement.executeBatch();
                 lastGeneratedId = insertedRows.length;
+                logger.info("{} rows inserted to table {}, RPS={}",
+                        lastGeneratedId,
+                        tableName,
+                        ((double) lastGeneratedId/timer.getTime(TimeUnit.MILLISECONDS)) * 1000);
 
             } catch (IOException e) {
                 logger.error("Can't load file {}", filename, e);
@@ -123,7 +128,7 @@ public class TableSeeder {
         logger.debug("SQL={}", sqlQuery);
         try (Statement statement = connection.getConnection().createStatement()) {
             statement.executeUpdate(sqlQuery.toString());
-            logger.info("Foreign key from {} was added for time ={}ms", fkTableName, timer.getTime(TimeUnit.MILLISECONDS));
+            logger.info("Foreign key fk_{}_{} was added for time ={}ms", tableName, fkTableName, timer.getTime(TimeUnit.MILLISECONDS));
         } catch (SQLException e) {
             logger.error("Error occurred while adding foreign key constraint", e);
         }

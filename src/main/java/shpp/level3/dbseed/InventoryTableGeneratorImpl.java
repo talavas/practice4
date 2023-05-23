@@ -66,7 +66,7 @@ public class InventoryTableGeneratorImpl extends TableGenerator {
                         while (availableThreads.get() == 0) {
                             try {
                                 logger.debug("Inventory stream generator pause");
-                                Thread.sleep(100);
+                                Thread.sleep(10);
                             } catch (InterruptedException e) {
                                 Thread.currentThread().interrupt();
                             }
@@ -136,9 +136,7 @@ public class InventoryTableGeneratorImpl extends TableGenerator {
     protected void insertBatch(List<InventoryDTO> batch) {
         logger.debug("Thread {}, receive batch to insert, size={}", Thread.currentThread().getName(), batch.size());
         String sql = "INSERT INTO retail.inventory (product_id, store_id, quantity)" +
-                " VALUES (?, ?, ?)" +
-                "ON CONFLICT (product_id, store_id) " +
-                "DO UPDATE SET quantity = inventory.quantity + excluded.quantity";
+                " VALUES (?, ?, ?)";
         try (PreparedStatement preparedStatement = connection.getConnection().prepareStatement(sql)) {
             for (InventoryDTO inventory : batch) {
                 preparedStatement.setLong(1, inventory.getProductId());
@@ -173,12 +171,10 @@ public class InventoryTableGeneratorImpl extends TableGenerator {
     protected void addIndexToTable() {
         timer.reset();
         timer.start();
-        String indexSql = "CREATE INDEX idx_inventory_product_store ON inventory (product_id, store_id)";
+        String indexSql = "CREATE INDEX idx_inventory_product_id ON inventory (product_id)";
         try (Statement statement = connection.getConnection().createStatement()) {
             statement.execute(indexSql);
-            indexSql = "CREATE INDEX idx_inventory_product_id ON inventory (product_id)";
-            statement.execute(indexSql);
-            logger.info("Indexes added to inventory table for time = {}ms",
+            logger.info("Index product_id added to inventory table for time = {}ms",
                     timer.getTime(TimeUnit.MILLISECONDS));
         } catch (SQLException e) {
             logger.error("Error occurred while adding index to retail.inventory table", e);

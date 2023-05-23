@@ -56,7 +56,7 @@ public class ProductTableGeneratorImpl extends TableGenerator{
                         while (availableThreads.get() == 0){
                             try {
                                     logger.debug("Product stream generator pause");
-                                    Thread.sleep(100);
+                                    Thread.sleep(10);
                                 } catch (InterruptedException e) {
                                     Thread.currentThread().interrupt();
                                 }
@@ -82,7 +82,7 @@ public class ProductTableGeneratorImpl extends TableGenerator{
             logger.info("Insert product RPS={}", (validProduct.doubleValue() / time) * 1000);
 
             addIndexToTable();
-            //addUniqueConstraintToIdColumn();
+            addUniqueConstraintToIdColumn();
         } catch (InterruptedException e) {
             logger.error("Error occurred while waiting for the threads to finish.",e);
             Thread.currentThread().interrupt();
