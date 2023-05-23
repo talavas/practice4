@@ -56,7 +56,7 @@ public class Store {
         try(PreparedStatement typeIdStatement = connection.prepareStatement(sqlStm);
         ResultSet typeIdResultSet = typeIdStatement.executeQuery()){
             if (typeIdResultSet.next()){
-                logger.info("Found result = {}", typeIdResultSet);
+                logger.info("Found result = {}", typeIdResultSet.getInt("id"));
                 return typeIdResultSet.getInt("id");
             }else{
                 logger.info("Id of product type didn't found.");
@@ -81,7 +81,7 @@ public class Store {
                 "LIMIT 1";
 
         int productTypeId = getProductTypeIdByName(productType);
-        logger.debug("product_type_id = {}", productTypeId);
+        logger.info("product_type_id = {}", productTypeId);
         
         if(productTypeId > 0){
             try (PreparedStatement preparedStatement = connection.prepareStatement(sqlStm)) {
