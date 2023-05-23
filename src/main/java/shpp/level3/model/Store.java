@@ -74,7 +74,7 @@ public class Store {
 
         String sqlStm = "SELECT store_id, SUM(quantity) AS max_quantity "+
                 "FROM inventory i " +
-                "RIGHT OUTER JOIN product p ON p.id = i.product_id "+
+                "RIGHT JOIN product p ON p.id = i.product_id "+
                 "WHERE p.product_type_id = ? "+
                 "GROUP BY store_id " +
                 "ORDER BY SUM(quantity) DESC "+
@@ -89,6 +89,7 @@ public class Store {
                 try (ResultSet storeResultSet = preparedStatement.executeQuery()) {
                     if (storeResultSet.next()) {
                         result  = getStoreById(storeResultSet.getInt("store_id"));
+                        logger.info("Found store with id={}", storeResultSet.getInt("store_id"));
                         if(result != null){
                             result.setMaxQuantity(storeResultSet.getInt("max_quantity"));
                         }
